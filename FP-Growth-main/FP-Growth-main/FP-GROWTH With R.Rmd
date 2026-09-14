@@ -1,0 +1,220 @@
+---
+title: Algoritma FP-Growth dengan R
+author: Tantri Novita Sari-Institut Teknologi Statistika dan Bisnis Muhammadiyah
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+bibliography: references.bib
+---
+
+```{=html}
+<style>
+body{
+text-align: justify}
+</style>
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Algoritma FP-Growth
+
+## Definisi
+
+FP-Growth adalah salah satu alternatif algoritma yang dapat digunakan untuk menentukan himpunan data yang paling sering muncul (frequent itemset) dalam sebuah kumpulan data (Indah Mulia Sari : 2013).
+
+FP-Growth adalah algoritma pencarian frequent item sets yang didapat dari FP-tree dengan menjelajahi tree dari bawah menuju ke atas (Tan, Steinbach, & Kumar, 2004).
+
+FP-growth adalah salah satu alternatif algoritma yang dapat digunakan untuk menentukan himpunan data yang paling sering muncul (frequent itemset) dalam sebuah kumpulan data. FP-growth menggunakan pendekatan yang berbeda dari paradigma yang digunakan pada algoritma Apriori (Sensuse, 2012).
+
+FP-Growth adalah algoritma pencarian frequent itemsets yang didapat dari FP-tree (Rama Novta Miraldi, 2014).
+
+Jadi dapat disimpulkan bahwa FP-Growth adalah salah satu algoritma yang digunakan untuk mencari himpunan data yang sering muncul dari sekumpulan data, dengan menggunakan cara pembangktan stuktur data Tree.
+
+## Tujuan
+
+Tujuan dari algoritma FP-Growth adalah sama dengan Apriori yaitu mencari Association Rules (hubungan antar item di dalam sebuah dataset yang telah ditentukan)
+
+## Kelebihan Algoritma FP-Growth
+
+FP-Growth merupakan algoritma yang lebih baik dibandingkan dengan algoritma apriori dikarenakan algoritma apriori yang memakan waktu saat menentukan kandidat itemset dan membaca database yang berulang-ulang, sedangkan FP-Growth hanya membaca database satu kali saat pembuatan FP-Tree dan menggunakan kandidat itemset dalam proses pembentukan frequent pattern.
+
+# Tahapan Algoritma FP-Growth
+
+1.  Siapkan Dataset
+2.  Pengurutan berdasarkan nilai frekuensi kemunculan item yang terbesar
+3.  Membentuk FP-tree
+4.  Membentuk Conditional Pattern Base
+5.  Membentuk Conditional FP-tree
+6.  Membentuk Frequent Pattern Generated
+7.  Mencari frequency 2 Itemset
+8.  Mencari Support 2 Itemset 9 Mencari Confidance 2 Itemset
+
+# Eksperimen Algoritma
+
+## library
+
+```{r}
+if(sessionInfo()['basePkgs']=="dplyr" | sessionInfo()['otherPkgs']=="dplyr"){
+  detach(package:dplyr, unload=TRUE)
+}
+
+if(sessionInfo()['basePkgs']=="tm" | sessionInfo()['otherPkgs']=="tm"){
+  detach(package:sentiment, unload=TRUE)
+  detach(package:tm, unload=TRUE)
+}
+
+library(plyr)
+library(arules)
+library(arulesViz) 
+library(grid)
+```
+
+```{r}
+library(readr)
+online_retail_II <- read_csv("C:/Users/Windows 10/Downloads/online_retail_II.csv")
+class(online_retail_II)
+```
+
+```{r}
+str(online_retail_II)
+```
+
+```{r}
+head(online_retail_II)
+```
+
+```{r}
+sum(is.na(online_retail_II))
+```
+
+```{r}
+sorted <- online_retail_II[order(online_retail_II$Invoice),]
+```
+
+```{r}
+sorted$Invoice  <- as.numeric(sorted$Invoice)
+str(sorted)
+```
+
+```{r}
+itemList <- plyr:: ddply(sorted, c("Invoice","InvoiceDate"), function(df1)paste(df1$itemDescription,collapse = ","))
+                  
+head(itemList,15)
+```
+
+```{r}
+itemList$Invoice <- NULL
+itemList$InvoiceDate <- NULL
+colnames(itemList) <- c("itemList")
+```
+
+```{r}
+write.csv(itemList,"ItemList.csv", quote = FALSE, row.names = TRUE)
+head(itemList)
+```
+
+```{r}
+txn = read.transactions(file="ItemList.csv", rm.duplicates= TRUE, format="basket",sep=",",cols=1);
+print(txn)
+```
+
+```{r}
+txn@itemInfo$labels <- gsub("\"","",txn@itemInfo$labels)
+```
+
+```{r}
+basket_rules <- apriori(txn, parameter = list(minlen=2, sup = 0.001, conf = 0.05, target="rules"))
+```
+
+```{r}
+print((basket_rules))
+```
+
+```{r}
+summary(basket_rules)
+```
+
+```{r}
+frequentItems <- eclat (online_retail_II, parameter = list(supp = 0.07, maxlen = 15)) # calculates support for frequent items
+```
+
+```{r}
+inspect(frequentItems)
+```
+
+```{r}
+inspect(basket_rules)[1:20]
+
+
+
+
+rules_lift <- sort (rules, by="lift", decreasing=TRUE) # 'high-lift' rules.
+inspect(head(rules_lift)) # show the support, lift and confidence for all rules
+```
+
+```{r}
+frequentItems <- eclat (online_retail_II, parameter = list(supp = 0.07, maxlen = 15)) # calculates support for frequent items
+```
+
+```{r}
+inspect(frequentItems)
+```
+
+```{r}
+itemFrequencyPlot(online_retail_II, topN = 10, type = "absolute", 
+main = "Item Frequency")
+```
+
+```{r}
+rules <- apriori (online_retail_II, parameter = list(supp = 0.001, conf = 0.5)) # Min Support as 0.001, confidence as 0.8.
+```
+
+```{r}
+rules_conf <- sort (rules, by="confidence", decreasing=TRUE) # 'high-confidence' rules.
+```
+
+```{r}
+inspect(head(rules_conf)) # show the support, lift and confidence for all rules
+```
+
+```{r}
+rules_lift <- sort (rules, by="lift", decreasing=TRUE) # 'high-lift' rules.
+inspect(head(rules_lift)) # show the support, lift and confidence for all rules
+```
+
+```{r}
+rules <- apriori(online_retail_II, parameter = list (supp = 0.001, conf = 0.2, maxlen=3)) # maxlen = 3 limits the elements in a rule to 3
+```
+
+```{r}
+#summary of rules
+summary(rules)
+```
+
+```{r}
+# Inspect rules
+#inspect(rules)
+#inspect top 5 rules by highest lift
+inspect(head(sort(rules, by ="lift"),5))
+```
+
+```{r}
+# Visualization of rules
+#Plotting rules
+plot(rules)
+```
+
+```{r}
+# Two key plot
+plot(rules , shading="order", control=list(main="two-key plot"))
+```
+
+# Referensi
+
+1.  <https://rpubs.com/shah_np/463712>.
+2.  <https://rpubs.com/Tantri_12345>
+3.  <https://www.kaggle.com/code/heeraldedhia/market-basket-analysis-using-apriori-algorithm/notebook>
+4.  <https://www.kaggle.com/datasets/heeraldedhia/groceries-dataset?resource=download>

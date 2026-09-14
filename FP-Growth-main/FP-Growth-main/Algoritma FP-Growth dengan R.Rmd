@@ -1,0 +1,257 @@
+---
+title: Algoritma FP-Growth dengan R
+author: Tantri Novita Sari-Institut Teknologi Statistika dan Bisnis Muhammadiyah
+date: "`r Sys.Date()`"
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+bibliography: references.bib
+---
+
+```{=html}
+<style>
+body{
+text-align: justify}
+</style>
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Algoritma FP-Growth
+
+## Definisi
+FP-Growth adalah salah satu alternatif algoritma yang dapat digunakan untuk menentukan himpunan data yang paling sering muncul (frequent itemset) dalam sebuah kumpulan data (Indah Mulia Sari : 2013).
+
+FP-Growth adalah algoritma pencarian frequent item sets yang didapat dari FP-tree dengan menjelajahi tree dari bawah menuju ke atas (Tan, Steinbach, & Kumar, 2004).
+
+FP-growth adalah salah satu alternatif algoritma yang dapat digunakan untuk menentukan himpunan data yang paling sering muncul (frequent itemset) dalam sebuah kumpulan data.
+
+FP-growth menggunakan pendekatan yang berbeda dari paradigma yang digunakan pada algoritma Apriori (Sensuse, 2012).
+
+FP-Growth adalah algoritma pencarian frequent itemsets yang didapat dari FP-tree (Rama Novta Miraldi, 2014).
+
+Jadi dapat disimpulkan bahwa FP-Growth adalah salah satu algoritma yang digunakan untuk mencari himpunan data yang sering muncul dari sekumpulan data, dengan menggunakan cara pembangktan stuktur data Tree. 
+
+## Tujuan
+Tujuan dari algoritma FP-Growth adalah sama dengan Apriori yaitu mencari Association Rules (hubungan antar item di dalam sebuah dataset yang telah ditentukan)
+
+## Kelebihan Algoritma FP-Growth
+FP-Growth merupakan algoritma yang lebih baik dibandingkan dengan algoritma apriori dikarenakan algoritma apriori yang memakan waktu saat menentukan kandidat itemset dan membaca database yang berulang-ulang, sedangkan FP-Growth hanya membaca database satu kali saat pembuatan FP-Tree dan menggunakan kandidat itemset dalam proses pembentukan frequent pattern.
+
+# Tahapan Algoritma FP-Growth
+
+1. Siapkan Dataset
+2. Pengurutan berdasarkan nilai frekuensi kemunculan item yang terbesar
+3. Membentuk FP-tree 
+4. Membentuk Conditional Pattern Base
+5. Membentuk Conditional FP-tree
+6. Membentuk Frequent Pattern Generated
+7. Mencari frequency 2 Itemset
+8. Mencari Support 2 Itemset
+9 Mencari Confidance 2 Itemset
+
+# Eksperimen Algoritma
+
+## library
+
+```{r}
+if(sessionInfo()['basePkgs']=="dplyr" | sessionInfo()['otherPkgs']=="dplyr"){
+  detach(package:dplyr, unload=TRUE)
+}
+
+if(sessionInfo()['basePkgs']=="tm" | sessionInfo()['otherPkgs']=="tm"){
+  detach(package:sentiment, unload=TRUE)
+  detach(package:tm, unload=TRUE)
+}
+
+library(plyr)
+library(arules)
+library(arulesViz)
+library(Matrix)
+library(base)
+```
+
+## Masukkan Dataset
+```{r}
+groceries <- readxl:: read_excel("~/Semester 3/Data Mining/Groceries_dataset.xlsx")
+class(groceries)
+```
+
+## Pembersihan Data dan Eksplor
+```{r}
+str(groceries)
+```
+
+```{r}
+head(groceries)
+```
+
+## Mengecek Nilai NA
+```{r}
+sum(is.na(groceries))
+```
+
+## Konversi Nomor Anggota menjadi numrtik
+```{r}
+sorted <- groceries[order(groceries$Member_number),]
+```
+
+## Mengkonversi deskripsi item ke format kategoris
+```{r}
+sorted$Member_number <- as.numeric(sorted$Member_number)
+str(sorted)
+```
+
+## Kelompokkan semua item yang dibeli bersama oleh pelanggan yang sama pada tanggal yang sama
+```{r}
+itemList <- ddply(sorted, c("Member_number","Date"), function(df1)paste(df1$itemDescription,collapse = ","))
+
+head(itemList,15)
+```
+
+## Menghapus nomor dan tanggal anggota
+```{r}
+itemList$Member_number <- NULL
+itemList$Date <- NULL
+colnames(itemList) <- c("itemList")
+```
+
+```{r}
+write.csv(itemList,"ItemList.csv", quote = FALSE, row.names = TRUE)
+head(itemList)
+```
+
+## Ubah file CSV ke Format Keranjang
+```{r}
+txn = read.transactions(file="ItemList.csv", rm.duplicates= TRUE, format="basket",sep=",",cols=1);
+print(txn)
+```
+
+## Hapus kutipan dari Transaksi
+```{r}
+txn@itemInfo$labels <- gsub("\"","",txn@itemInfo$labels)
+```
+
+## Apriori Algorithm
+Algoritma Apriori adalah algoritma yang digunakan untuk menghitung aturan asosiasi antar objek. Aturan asosiasi menjelaskan bagaimana dua atau lebih objek terkait satu sama lain. Apriori menghasilkan seperangkat aturan yang paling relevan dari data transaksi tertentu. Menunjukkan dukungan, kepercayaan diri, dan pencabutan aturan yang dapat digunakan untuk memutuskan kekuatan relatif aturan.
+
+Tahapan untuk menganalisis aturan asosiasi yaitu:
+
+1. Analisa pola frekuensi tinggi (Support)
+
+    $\begin{array}{ll}\text { Support }(\mathrm{A}) & =\frac{\Sigma \text { Transaksi mengandung } A}{\Sigma \text { Transaksi }} \times 100 \% \\ \text { Support }(\mathrm{A} \mid \mathrm{B}) & =\frac{\Sigma \text { Transaksi mengandung } A \text { dan } B}{\Sigma \text { Transaksi } A} \times 100 \%\end{array}$
+
+2. Pembentukan aturan asosiasi (Confidence)
+
+    $\begin{aligned} \text { Confidence }(\mathrm{A} \mid \mathrm{B}) & \rightarrow(\mathrm{A \cap B}) \\ & =\frac{\Sigma \text { Transaksi mengandung } A \text { dan } B}{\Sigma \text { Transaksi } A} \times 100 \%\end{aligned}$
+
+3. Mengetahui kekuatan aturan asosiasi (association rule) yang telah terbentuk dari nilai support dan confidence
+
+    Lift $=\frac{\text { Support }}{\operatorname{Supp}(X) \times \operatorname{Supp}(Y)}$
+
+```{r}
+basket_rules <- apriori(txn, parameter = list(minlen=2, sup = 0.001, conf = 0.05, target="rules"))
+```
+
+## Total aturan yang dihasilkan
+```{r}
+print(length(basket_rules))
+```
+
+```{r}
+summary(basket_rules)
+```
+
+## Memeriksa aturan keranjang
+```{r}
+inspect(basket_rules[1:20])
+```
+
+```{r}
+inspect(basket_rules[1:5])
+```
+
+## Memvisualisasikan Aturan Asosiasi
+
+```{r}
+plot(sort(basket_rules,by="lift"),method="graph",control=list(type="items"))
+```
+
+
+```{r}
+plot(basket_rules, jitter = 0)
+```
+
+```{r}
+plot(basket_rules, method = "grouped", control = list(k = 5))
+```
+
+```{r}
+plot(basket_rules, method = "grouped", control = list(k = 10))
+```
+
+## Grafik 10 aturan pertama
+```{r}
+plot(basket_rules[1:10], method="graph")
+```
+
+## Grafik 20 aturan pertama
+```{r}
+plot(basket_rules[1:20], method="graph")
+```
+
+## Grafik 50 aturan pertama
+```{r}
+plot(basket_rules[1:50], method="graph")
+```
+
+## Plot koordinat paralel
+```{r}
+plot(basket_rules[1:10], method="paracoord")
+```
+
+```{r}
+plot(basket_rules[1:20], method="paracoord")
+```
+
+## Produk Yang Paling Sering Digunakan
+```{r}
+itemFrequencyPlot(txn, topN = 10)
+```
+
+## Mengubah hiperparameter
+```{r}
+basket_rules2 <- apriori(txn, parameter = list(minlen=3, sup = 0.001, conf = 0.1, target="rules"))
+```
+
+```{r}
+print(length(basket_rules2))
+```
+
+```{r}
+summary(basket_rules2)
+```
+
+```{r}
+inspect(basket_rules2)
+```
+
+```{r}
+plot(basket_rules2, method="graph")
+```
+
+```{r}
+plot(basket_rules2, method="paracoord")
+```
+
+Dengan demikian telah menyelesaikan Market Basket Analysis menggunakan algoritma Apriori (FP-Growth) pada R
+
+# Referensi
+1. https://www.kaggle.com/code/heeraldedhia/market-basket-analysis-using-apriori-algorithm/notebook
+2. https://rpubs.com/Tantri_12345
+3. https://github.com/Tantri12345/FP-Growth
+4. https://www.kaggle.com/datasets/heeraldedhia/groceries-dataset?resource=download
+5. https://gifadn.medium.com/market-basket-analisys-mba-dengan-menggunakan-datasets-groceries-di-r-62f63f0278c4
